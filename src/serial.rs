@@ -1,15 +1,34 @@
 ﻿use driver::Driver;
 use nmea::{NmeaLine, NmeaParser};
 use serial_port::{Port, PortKey, SerialPort};
-use std::time::{Duration, Instant};
+use std::{
+    sync::{Arc, Weak},
+    time::{Duration, Instant},
+};
 
 const OPEN_TIMEOUT: Duration = Duration::from_secs(1);
 const LINE_RECEIVE_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub struct RTKBoard {
-    port: Port,
+    port: Arc<Port>,
     buf: NmeaParser<256>,
     last_time: Instant,
+}
+
+pub struct RTCMReceiver(Weak<Port>);
+
+impl RTCMReceiver {
+    pub fn receive(&self, buf: &[u8]) {
+        if let Some(p) = self.0.upgrade() {
+            let _ = p.write(buf);
+        }
+    }
+}
+
+impl RTKBoard {
+    pub fn get_receiver(&self) -> RTCMReceiver {
+        RTCMReceiver(Arc::downgrade(&self.port))
+    }
 }
 
 impl Driver for RTKBoard {
@@ -32,7 +51,7 @@ impl Driver for RTKBoard {
                 (
                     (),
                     Self {
-                        port,
+                        port: Arc::new(port),
                         buf: Default::default(),
                         last_time: Instant::now(),
                     },

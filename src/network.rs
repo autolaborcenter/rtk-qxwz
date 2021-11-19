@@ -66,7 +66,7 @@ impl Driver for StreamToQXWZ {
             let mut reader = BufReader::new(tcp);
             match reader.read_line(&mut line).await {
                 Ok(_) => {
-                    if line.as_str() == "ICY 200 OK" {
+                    if line.trim() == "ICY 200 OK" {
                         Some(((), Self(reader.into_inner())))
                     } else {
                         None
