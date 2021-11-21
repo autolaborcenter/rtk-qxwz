@@ -15,7 +15,7 @@ pub struct GpggaSender(TcpStream);
 // Accept: */*\r\n\
 // \r\n";
 
-macro_rules! AUTH_TEMPLATE {
+macro_rules! AUTH {
     () => {
         "\
 GET /AUTO HTTP/1.1\r\n\
@@ -23,8 +23,6 @@ Authorization: Basic {}\r\n\
 \r\n"
     };
 }
-
-const AUTH: &str = "cXh3cWh6MDAzOjlmODcyMjA=";
 
 impl GpggaSender {
     pub async fn send(&mut self, tail: &str, cs: u8) {
@@ -45,16 +43,20 @@ impl Driver for StreamToQXWZ {
     type Event = Vec<u8>;
 
     fn keys() -> Vec<Self::Key> {
-        vec![AUTH.into()]
+        std::fs::read_to_string("auth")
+            .unwrap_or_default()
+            .lines()
+            .map(|line| base64::encode(line))
+            .collect()
     }
 
     fn open_timeout() -> std::time::Duration {
-        Duration::from_secs(1)
+        Duration::ZERO
     }
 
     fn new(t: &Self::Key) -> Option<(Self::Pacemaker, Self)> {
         task::block_on(async move {
-            let auth = format!(AUTH_TEMPLATE!(), t);
+            let auth = format!(AUTH!(), t);
             let mut tcp = match TcpStream::connect("203.107.45.154:8002").await {
                 Ok(tcp) => tcp,
                 Err(_) => return None,
@@ -99,6 +101,20 @@ impl Driver for StreamToQXWZ {
 }
 
 #[test]
+fn assert_read_keys() {
+    println!("{:?}", StreamToQXWZ::keys())
+}
+
+#[test]
 fn assert_connect() {
-    assert!(StreamToQXWZ::new(&AUTH.into()).is_some())
+    driver::SupervisorForSingle::<StreamToQXWZ>::default().join(|e| {
+        use driver::SupervisorEventForSingle::*;
+        match e {
+            Connected(key, _) => println!("key = {}", key),
+            Event(_, _) => println!("1"),
+            Disconnected => println!("2"),
+            ConnectFailed => println!("3"),
+        }
+        false
+    });
 }
