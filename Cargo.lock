@@ -445,7 +445,7 @@ dependencies = [
 
 [[package]]
 name = "nmea"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "num_cpus"
@@ -514,7 +514,7 @@ dependencies = [
 
 [[package]]
 name = "rtk-qxwz"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-std",
  "base64",

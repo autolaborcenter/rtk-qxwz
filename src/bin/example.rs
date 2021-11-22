@@ -3,6 +3,7 @@
     task,
 };
 use driver::{SupervisorEventForSingle::*, SupervisorForSingle};
+use nmea::rebuild_nema;
 use rtk_qxwz::{GpggaSender, RTCMReceiver, RTKBoard, StreamToQXWZ};
 
 fn main() {
@@ -22,6 +23,7 @@ fn main() {
                         *task::block_on(sender.lock()) = None;
                     }
                     Event(_, Some((_, buf))) => {
+                        println!("forward. len = {}", buf.len());
                         if let Some(ref mut r) = *task::block_on(receiver.lock()) {
                             r.receive(buf.as_slice());
                         }
@@ -37,13 +39,15 @@ fn main() {
     }
     SupervisorForSingle::<RTKBoard>::default().join(|e| {
         match e {
-            Connected(_, board) => {
+            Connected(port, board) => {
+                println!("port = COM{}", port);
                 *task::block_on(receiver.lock()) = Some(board.get_receiver());
             }
             Disconnected => {
                 *task::block_on(receiver.lock()) = None;
             }
             Event(_, Some((_, (tail, cs)))) => {
+                println!("send: {}", rebuild_nema("GAGGA", tail.as_str(), cs));
                 task::block_on(async {
                     if let Some(ref mut s) = *sender.lock().await {
                         s.send(tail.as_str(), cs).await;
