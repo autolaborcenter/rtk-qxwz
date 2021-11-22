@@ -6,8 +6,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-const OPEN_TIMEOUT: Duration = Duration::from_secs(1);
-const LINE_RECEIVE_TIMEOUT: Duration = Duration::from_secs(5);
+const OPEN_TIMEOUT: Duration = Duration::from_millis(3000);
+const LINE_RECEIVE_TIMEOUT: Duration = Duration::from_millis(2500);
 
 pub struct RTKBoard {
     port: Arc<Port>,

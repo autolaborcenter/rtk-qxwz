@@ -5,6 +5,7 @@
 use driver::{SupervisorEventForSingle::*, SupervisorForSingle};
 use nmea::rebuild_nema;
 use rtk_qxwz::{GpggaSender, RTCMReceiver, RTKBoard, StreamToQXWZ};
+use std::time::Duration;
 
 fn main() {
     let sender: Arc<Mutex<Option<GpggaSender>>> = Arc::new(Mutex::new(None));
@@ -31,6 +32,7 @@ fn main() {
                     Event(_, None) => {}
                     ConnectFailed => {
                         println!("network failed to connect.");
+                        std::thread::sleep(Duration::from_secs(1));
                     }
                 }
                 true
@@ -57,6 +59,7 @@ fn main() {
             Event(_, None) => {}
             ConnectFailed => {
                 println!("serial failed to connect.");
+                std::thread::sleep(Duration::from_secs(1));
             }
         }
         true
