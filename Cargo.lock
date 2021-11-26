@@ -693,7 +693,6 @@ dependencies = [
  "gnss",
  "monitor-tool",
  "nmea",
- "palette",
  "serial-port",
 ]
 

@@ -13,7 +13,11 @@ gnss = { path = "../gnss" }
 base64 = "*"
 async-std = "*"
 
-palette = "*"
-monitor-tool = { path = "../monitor-tool-rs", default-features = false, features = [
-    "sender",
-] }
+monitor-tool = { path = "../monitor-tool-rs", optional = true, default-features = false }
+
+[features]
+display = ["monitor-tool/sender"]
+
+[[bin]]
+name = "example"
+required-features = ["display"]
