@@ -9,5 +9,11 @@ readme = "README.md"
 driver = { path = "../driver" }
 serial-port = { path = "../serial-port" }
 nmea = { path = "../nmea" }
+gnss = { path = "../gnss" }
 base64 = "*"
 async-std = "*"
+
+palette = "*"
+monitor-tool = { path = "../monitor-tool-rs", default-features = false, features = [
+    "sender",
+] }

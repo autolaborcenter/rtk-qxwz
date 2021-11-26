@@ -27,6 +27,7 @@ Authorization: Basic {}\r\n\
 impl GpggaSender {
     pub async fn send(&mut self, tail: &str, cs: u8) {
         let line = format!("{}\r\n", rebuild_nema("GPGGA", tail, cs));
+        println!("send: {}", line.trim_end());
         let _ = self.0.write_all(line.as_bytes()).await;
     }
 }

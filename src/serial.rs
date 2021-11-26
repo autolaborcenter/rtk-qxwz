@@ -34,7 +34,7 @@ impl RTKBoard {
 impl Driver for RTKBoard {
     type Pacemaker = ();
     type Key = PortKey;
-    type Event = (String, u8);
+    type Event = (NmeaLine, u8);
 
     fn keys() -> Vec<Self::Key> {
         Port::list().into_iter().map(|id| id.key).collect()
@@ -67,16 +67,9 @@ impl Driver for RTKBoard {
         loop {
             if let Some((line, cs)) = self.buf.next() {
                 time = self.last_time;
-                match line {
-                    NmeaLine::GPGGA(_, line) => {
-                        // 如果回调指示不要继续阻塞，立即退出
-                        if !f(self, Some((time, (line, cs)))) {
-                            return true;
-                        }
-                    }
-                    _ => {
-                        return false;
-                    }
+                // 如果回调指示不要继续阻塞，立即退出
+                if !f(self, Some((time, (line, cs)))) {
+                    return true;
                 }
             }
             // 解析超时
