@@ -5,10 +5,30 @@
 };
 use driver::Driver;
 use nmea::rebuild_nema;
-use std::time::{Duration, Instant};
+use std::{
+    marker::PhantomData,
+    time::{Duration, Instant},
+};
 
-pub struct StreamToQXWZ(TcpStream);
+pub struct QXWZService<T>(TcpStream, PhantomData<T>);
+
 pub struct GpggaSender(TcpStream);
+
+pub trait QXWZAccount: 'static + Send {
+    fn get() -> Option<String>;
+}
+
+pub struct AuthFile;
+
+impl QXWZAccount for AuthFile {
+    fn get() -> Option<String> {
+        std::fs::read_to_string("auth")
+            .unwrap_or_default()
+            .lines()
+            .next()
+            .map(|line| base64::encode(line))
+    }
+}
 
 // const ASK: &str = "\
 // GET / HTTP/1.1\r\n\
@@ -27,28 +47,23 @@ Authorization: Basic {}\r\n\
 impl GpggaSender {
     pub async fn send(&mut self, tail: &str, cs: u8) {
         let line = format!("{}\r\n", rebuild_nema("GPGGA", tail, cs));
-        println!("send: {}", line.trim_end());
         let _ = self.0.write_all(line.as_bytes()).await;
     }
 }
 
-impl StreamToQXWZ {
+impl<T> QXWZService<T> {
     pub fn get_sender(&self) -> GpggaSender {
         GpggaSender(self.0.clone())
     }
 }
 
-impl Driver for StreamToQXWZ {
+impl<T: QXWZAccount> Driver for QXWZService<T> {
     type Pacemaker = ();
     type Key = String;
     type Event = Vec<u8>;
 
     fn keys() -> Vec<Self::Key> {
-        std::fs::read_to_string("auth")
-            .unwrap_or_default()
-            .lines()
-            .map(|line| base64::encode(line))
-            .collect()
+        T::get().map(|a| vec![a]).unwrap_or_default()
     }
 
     fn open_timeout() -> std::time::Duration {
@@ -70,7 +85,7 @@ impl Driver for StreamToQXWZ {
             match reader.read_line(&mut line).await {
                 Ok(_) => {
                     if line.trim() == "ICY 200 OK" {
-                        Some(((), Self(reader.into_inner())))
+                        Some(((), Self(reader.into_inner(), PhantomData {})))
                     } else {
                         None
                     }
@@ -101,21 +116,26 @@ impl Driver for StreamToQXWZ {
     }
 }
 
-#[test]
-fn assert_read_keys() {
-    println!("{:?}", StreamToQXWZ::keys())
-}
+#[cfg(test)]
+mod t {
+    use super::*;
 
-#[test]
-fn assert_connect() {
-    driver::SupervisorForSingle::<StreamToQXWZ>::default().join(|e| {
-        use driver::SupervisorEventForSingle::*;
-        match e {
-            Connected(key, _) => println!("key = {}", key),
-            Event(_, _) => println!("1"),
-            Disconnected => println!("2"),
-            ConnectFailed => println!("3"),
-        }
-        false
-    });
+    #[test]
+    fn assert_read_keys() {
+        println!("{:?}", QXWZService::<AuthFile>::keys())
+    }
+
+    #[test]
+    fn assert_connect() {
+        driver::SupervisorForSingle::<QXWZService<AuthFile>>::default().join(|e| {
+            use driver::SupervisorEventForSingle::*;
+            match e {
+                Connected(key, _) => println!("key = {}", key),
+                Event(_, _) => println!("1"),
+                Disconnected => println!("2"),
+                ConnectFailed => println!("3"),
+            }
+            false
+        });
+    }
 }

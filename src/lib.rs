@@ -1,7 +1,7 @@
 mod network;
 mod serial;
 
-pub use network::{GpggaSender, StreamToQXWZ};
+pub use network::{AuthFile, GpggaSender, QXWZAccount, QXWZService};
 pub use serial::{RTCMReceiver, RTKBoard};
 
 #[cfg(feature = "display")]
@@ -20,12 +20,12 @@ pub mod prefab {
     const RETRY: Duration = Duration::from_secs(3);
 
     /// 启动千寻位置服务
-    pub fn spawn_qxwz(
+    pub fn spawn_qxwz<T: QXWZAccount>(
         sender: Arc<Mutex<Option<GpggaSender>>>,
         receiver: Arc<Mutex<Option<RTCMReceiver>>>,
     ) {
         task::spawn_blocking(move || {
-            SupervisorForSingle::<StreamToQXWZ>::default().join(|e| {
+            SupervisorForSingle::<QXWZService<T>>::default().join(|e| {
                 match e {
                     Connected(_, stream) => {
                         *task::block_on(sender.lock()) = Some(stream.get_sender());

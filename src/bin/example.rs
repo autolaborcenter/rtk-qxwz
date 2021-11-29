@@ -8,15 +8,43 @@ use gnss::{LocalReference, WGS84};
 use nmea::NmeaLine::*;
 use rtk_qxwz::{
     display::{vertex, ENU_TOPIC},
-    monitor_tool::{palette, rgba, Encoder},
+    monitor_tool::{palette, rgba, vertex, Encoder},
 };
-use rtk_qxwz::{prefab, GpggaSender, RTCMReceiver, RTKBoard};
+use rtk_qxwz::{AuthFile, GpggaSender, QXWZService, RTCMReceiver, RTKBoard};
 use std::{f32::consts::FRAC_PI_2, time::Duration};
 
 fn main() {
     let sender: Arc<Mutex<Option<GpggaSender>>> = Arc::new(Mutex::new(None));
     let receiver: Arc<Mutex<Option<RTCMReceiver>>> = Arc::new(Mutex::new(None));
-    prefab::spawn_qxwz(sender.clone(), receiver.clone());
+    {
+        let sender = sender.clone();
+        let receiver = receiver.clone();
+        task::spawn_blocking(move || {
+            SupervisorForSingle::<QXWZService<AuthFile>>::default().join(|e| {
+                match e {
+                    Connected(_, stream) => {
+                        println!("qxwz connected");
+                        *task::block_on(sender.lock()) = Some(stream.get_sender());
+                    }
+                    Disconnected => {
+                        println!("qxwz disconnected");
+                        *task::block_on(sender.lock()) = None;
+                    }
+                    Event(_, Some((_, buf))) => {
+                        if let Some(ref mut receiver) = *task::block_on(receiver.lock()) {
+                            receiver.receive(buf.as_slice());
+                        }
+                    }
+                    Event(_, None) => {}
+                    ConnectFailed => {
+                        println!("qxwz connect failed");
+                        task::block_on(task::sleep(Duration::from_secs(3)));
+                    }
+                }
+                true
+            });
+        });
+    }
 
     const REFERENCE: WGS84 = WGS84 {
         latitude: 39.9926296,
@@ -46,6 +74,27 @@ fn main() {
                         }
                     });
                 }
+                GPHPD(body) => {
+                    use nmea::gphpd::Status::*;
+
+                    let wgs84 = WGS84 {
+                        latitude: body.latitude as f64 * 1e-7,
+                        longitude: body.longitude as f64 * 1e-7,
+                        altitude: body.altitude as f64 * 1e-2,
+                    };
+                    let enu = reference.wgs84_to_enu(wgs84);
+                    let dir = (body.heading as f32) * 1e-3;
+                    let level = match body.status{
+                        GPS定位 => 1,
+                        GPS定向 => 2,
+                        RTK定位 => 3,
+                        RTK定向 => 4,
+                        _ => 0,
+                    };
+                    let vertex = vertex!(level; enu.e as f32, enu.n as f32; Arrow, FRAC_PI_2 - dir.to_radians(); 64) ;
+                    let packet = Encoder::with(|encoder| encoder.topic("gphpd").push(vertex));
+                    let _ = task::block_on(socket.send(&packet));
+                }
                 GPFPD(body) => {
                     let wgs84 = WGS84 {
                         latitude: body.latitude as f64 * 1e-7,
@@ -54,10 +103,6 @@ fn main() {
                     };
                     let enu = reference.wgs84_to_enu(wgs84);
                     let dir = (body.heading as f32) * 1e-3;
-                    println!(
-                        "{:?} |({}, {})| {:?} | {}",
-                        body.status, body.nsv1, body.nsv2, enu, dir
-                    );
                     let vertex = vertex(body.status, enu, FRAC_PI_2 - dir.to_radians());
                     let packet = Encoder::with(|encoder| encoder.topic(ENU_TOPIC).push(vertex));
                     let _ = task::block_on(socket.send(&packet));
@@ -78,7 +123,20 @@ fn send_config(socket: Arc<UdpSocket>, period: Duration) {
     let clear = Encoder::with(|encoder| encoder.topic(ENU_TOPIC).clear());
     let topic = Encoder::with(|encoder| {
         encoder.config_topic(
-            ENU_TOPIC,
+            "gphpd",
+            36000,
+            500,
+            &[
+                (0, rgba!(GRAY; 0.2)),
+                (1, rgba!(NAVY; 0.5)),
+                (2, rgba!(BLUE; 0.5)),
+                (3, rgba!(DEEPSKYBLUE; 0.5)),
+                (4, rgba!(CYAN; 0.5)),
+            ],
+            |_| {},
+        );
+        encoder.config_topic(
+            "gphpd",
             36000,
             500,
             &[
@@ -87,9 +145,6 @@ fn send_config(socket: Arc<UdpSocket>, period: Duration) {
                 (2, rgba!(ORANGE; 0.5)),
                 (3, rgba!(YELLOW; 0.5)),
                 (4, rgba!(GREEN; 0.5)),
-                (5, rgba!(LIGHTBLUE; 0.5)),
-                (6, rgba!(BLUE; 0.5)),
-                (7, rgba!(VIOLET; 0.5)),
             ],
             |_| {},
         );
