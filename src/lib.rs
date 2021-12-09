@@ -1,8 +1,11 @@
 mod network;
 mod serial;
 
+pub use base64::encode as encode_base64;
 pub use network::{AuthFile, GpggaSender, QXWZAccount, QXWZService};
 pub use serial::{RTCMReceiver, RTKBoard};
+
+pub extern crate nmea;
 
 #[cfg(feature = "display")]
 pub extern crate monitor_tool;
