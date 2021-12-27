@@ -54,9 +54,9 @@ fn main() {
     }
 
     let reference = LocalReference::from(WGS84 {
-        latitude: 39.9926296,
-        longitude: 116.3270623,
-        altitude: 54.12,
+        latitude: 39.595678,
+        longitude: 116.196329,
+        altitude: 40.00,
     });
     let socket = Arc::new(task::block_on(UdpSocket::bind("0.0.0.0:0")).unwrap());
     let _ = task::block_on(socket.connect("127.0.0.1:12345"));

@@ -3,8 +3,8 @@
 #[derive(Default, Debug)]
 pub struct Gpgga {
     pub utc: (u32, u8),
-    pub latitude: (i32, u8),
-    pub longitude: (i32, u8),
+    pub latitude: (i64, u8),
+    pub longitude: (i64, u8),
     pub status: GpggaStatus,
     pub satellite: u8,
     pub hdop: (u8, u8),
@@ -85,7 +85,7 @@ impl FromStr for Gpgga {
                 None => return Err(LackOfField("longitude_dir")),
             }
             // status
-            result.status = field!("longitude"; body);
+            result.status = field!("status"; body);
             // satellite
             result.satellite = field!("satellite"; body);
             // hdop
