@@ -1,5 +1,5 @@
-﻿use driver::Driver;
-use nmea::{NmeaLine, NmeaParser};
+﻿use crate::nmea::Buffer;
+use driver::Driver;
 use serial_port::{Port, PortKey, SerialPort};
 use std::{
     sync::{Arc, Weak},
@@ -11,7 +11,7 @@ const LINE_RECEIVE_TIMEOUT: Duration = Duration::from_millis(2500);
 
 pub struct RTKBoard {
     port: Arc<Port>,
-    buf: NmeaParser<256>,
+    buf: Buffer<256>,
     last_time: Instant,
 }
 
@@ -34,7 +34,7 @@ impl RTKBoard {
 impl Driver for RTKBoard {
     type Pacemaker = ();
     type Key = PortKey;
-    type Event = (NmeaLine, u8);
+    type Event = String;
 
     fn keys() -> Vec<Self::Key> {
         Port::list().into_iter().map(|id| id.key).collect()
@@ -52,7 +52,7 @@ impl Driver for RTKBoard {
                     (),
                     Self {
                         port: Arc::new(port),
-                        buf: Default::default(),
+                        buf: Buffer::new(),
                         last_time: Instant::now(),
                     },
                 )
@@ -65,10 +65,11 @@ impl Driver for RTKBoard {
     {
         let mut time = Instant::now();
         loop {
-            if let Some((line, cs)) = self.buf.next() {
+            if let Some(line) = self.buf.parse() {
                 time = self.last_time;
+                let line = line.into();
                 // 如果回调指示不要继续阻塞，立即退出
-                if !f(self, Some((time, (line, cs)))) {
+                if !f(self, Some((time, line))) {
                     return true;
                 }
             }
@@ -76,19 +77,17 @@ impl Driver for RTKBoard {
             else if self.last_time > time + LINE_RECEIVE_TIMEOUT {
                 return false;
             }
-            // 成功接收
-            else if self
-                .port
-                .read(self.buf.as_buf())
-                .filter(|n| *n > 0)
-                .map(|n| self.buf.notify_received(n))
-                .is_some()
-            {
-                self.last_time = Instant::now();
-            }
-            // 接收失败
+            // 接收
             else {
-                return false;
+                let buf = self.buf.to_write();
+                if let Some(n) = self.port.read(buf).filter(|n| *n > 0) {
+                    self.last_time = Instant::now();
+                    self.buf.extend(n);
+                }
+                // 接收失败
+                else {
+                    return false;
+                }
             }
         }
     }

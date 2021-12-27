@@ -8,15 +8,14 @@ readme = "README.md"
 [dependencies]
 driver = { path = "../driver" }
 serial-port = { path = "../serial-port" }
-nmea = { path = "../nmea" }
-gnss = { path = "../gnss" }
 base64 = "*"
 async-std = "*"
 
+gnss = { path = "../gnss", optional = true }
 monitor-tool = { path = "../monitor-tool-rs", optional = true, default-features = false }
 
 [features]
-display = ["monitor-tool/sender"]
+display = ["monitor-tool/sender", "gnss"]
 
 [[bin]]
 name = "example"

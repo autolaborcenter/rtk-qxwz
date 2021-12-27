@@ -4,7 +4,6 @@
     task,
 };
 use driver::Driver;
-use nmea::rebuild_nema;
 use std::{
     marker::PhantomData,
     time::{Duration, Instant},
@@ -45,8 +44,7 @@ Authorization: Basic {}\r\n\
 }
 
 impl GpggaSender {
-    pub async fn send(&mut self, tail: &str, cs: u8) {
-        let line = format!("{}\r\n", rebuild_nema("GPGGA", tail, cs));
+    pub async fn send(&mut self, line: &str) {
         let _ = self.0.write_all(line.as_bytes()).await;
     }
 }
