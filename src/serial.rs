@@ -67,7 +67,7 @@ impl Driver for RTKBoard {
         loop {
             if let Some(line) = self.buf.parse() {
                 time = self.last_time;
-                let line = line.into();
+                let line = format!("{}\r\n", line);
                 // 如果回调指示不要继续阻塞，立即退出
                 if !f(self, Some((time, line))) {
                     return true;
