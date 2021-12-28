@@ -15,7 +15,7 @@ gnss = { path = "../gnss", optional = true }
 monitor-tool = { path = "../monitor-tool-rs", optional = true, default-features = false }
 
 [features]
-display = ["monitor-tool/sender", "gnss"]
+display = ["monitor-tool/client", "gnss"]
 
 [[bin]]
 name = "example"
