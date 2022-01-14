@@ -12,7 +12,7 @@ pub struct Gpgga {
     pub altitude_error: f64,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum GpggaStatus {
     无效解 = 0,
     单点解 = 1,
