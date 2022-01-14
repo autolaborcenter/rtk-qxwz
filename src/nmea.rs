@@ -95,7 +95,7 @@ impl<const LEN: usize> Buffer<LEN> {
         while self.p_read < self.p_write {
             // 找到起始位
             match self.get(self.p_read) {
-                b'#' | b'$' => break,
+                b'$' => break,
                 _ => self.p_read += 1,
             }
         }
