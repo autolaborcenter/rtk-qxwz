@@ -12,12 +12,6 @@ use rtk_qxwz::{
 };
 use std::time::Duration;
 
-macro_rules! float {
-    ($pair:expr) => {
-        $pair.0 as f64 * 0.1f64.powi($pair.1 as i32)
-    };
-}
-
 fn main() {
     let sender: Arc<Mutex<Option<GpggaSender>>> = Arc::new(Mutex::new(None));
     let receiver: Arc<Mutex<Option<RTCMReceiver>>> = Arc::new(Mutex::new(None));
@@ -80,9 +74,9 @@ fn main() {
                         }
                         println!("{:?}", gpgga);
                         let enu = reference.wgs84_to_enu(WGS84 {
-                            latitude: float!(gpgga.latitude),
-                            longitude: float!(gpgga.longitude),
-                            altitude: float!(gpgga.altitude),
+                            latitude: gpgga.latitude,
+                            longitude: gpgga.longitude,
+                            altitude: gpgga.altitude,
                         });
                         match gpgga.status {
                             无效解 | 用户输入 | 航位推算 | PPS | PPP => {}

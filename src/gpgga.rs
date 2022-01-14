@@ -2,14 +2,14 @@
 
 #[derive(Default, Debug)]
 pub struct Gpgga {
-    pub utc: (u32, u8),
-    pub latitude: (i64, u8),
-    pub longitude: (i64, u8),
+    pub utc: f32,
+    pub latitude: f64,
+    pub longitude: f64,
     pub status: GpggaStatus,
     pub satellite: u8,
-    pub hdop: (u8, u8),
-    pub altitude: (i32, u8),
-    pub altitude_error: (i32, u8),
+    pub hdop: f32,
+    pub altitude: f64,
+    pub altitude_error: f64,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -65,22 +65,20 @@ impl FromStr for Gpgga {
             let mut body = body.split(',');
             let mut result = Self::default();
             // utc
-            result.utc = field!("utc"; body, parse_fix);
+            result.utc = field!("utc"; body);
             // latitude
-            result.latitude = field!("latitude"; body, parse_fix);
-            result.latitude.1 += 2;
+            result.latitude = field!("latitude"; body, parse_degree);
             match body.next() {
                 Some("N") => {}
-                Some("S") => result.latitude.0 = -result.latitude.0,
+                Some("S") => result.latitude = -result.latitude,
                 Some(_) => return Err(FailToParse("latitude_dir")),
                 None => return Err(LackOfField("latitude_dir")),
             }
             // longitude
-            result.longitude = field!("longitude"; body, parse_fix);
-            result.longitude.1 += 2;
+            result.longitude = field!("longitude"; body, parse_degree);
             match body.next() {
                 Some("E") => {}
-                Some("W") => result.longitude.0 = -result.longitude.0,
+                Some("W") => result.longitude = -result.longitude,
                 Some(_) => return Err(FailToParse("longitude_dir")),
                 None => return Err(LackOfField("longitude_dir")),
             }
@@ -89,16 +87,16 @@ impl FromStr for Gpgga {
             // satellite
             result.satellite = field!("satellite"; body);
             // hdop
-            result.hdop = field!("hdop"; body, parse_fix);
+            result.hdop = field!("hdop"; body);
             // altitude
-            result.altitude = field!("altitude"; body, parse_fix);
+            result.altitude = field!("altitude"; body);
             match body.next() {
                 Some("M") => {}
                 Some(_) => return Err(FailToParse("altitude_unit")),
                 None => return Err(LackOfField("altitude_unit")),
             }
             // altitude_error
-            result.altitude_error = field!("altitude_error"; body, parse_fix);
+            result.altitude_error = field!("altitude_error"; body);
             match body.next() {
                 Some("M") => {}
                 Some(_) => return Err(FailToParse("altitude_error_unit")),
@@ -136,11 +134,9 @@ impl FromStr for GpggaStatus {
     }
 }
 
-fn parse_fix<T: FromStr>(word: &str) -> Option<(T, u8)> {
-    word.split_once('.').and_then(|(a, b)| {
-        let mut buffer = String::with_capacity(a.len() + b.len());
-        buffer.extend(a.chars());
-        buffer.extend(b.chars());
-        Some((buffer.parse().ok()?, b.len() as u8))
-    })
+fn parse_degree(word: &str) -> Option<f64> {
+    let split = word.find('.')? - 2;
+    let degrees = &word[..split].parse::<f64>().ok()?;
+    let minutes = &word[split..].parse::<f64>().ok()?;
+    Some(degrees + minutes / 60.0)
 }
