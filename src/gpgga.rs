@@ -134,6 +134,7 @@ impl FromStr for GpggaStatus {
     }
 }
 
+/// 度分格式转十进制度
 fn parse_degree(word: &str) -> Option<f64> {
     let split = word.find('.')? - 2;
     let degrees = &word[..split].parse::<f64>().ok()?;

@@ -5,7 +5,7 @@
 };
 use driver::{SupervisorEventForSingle::*, SupervisorForSingle};
 use gnss::{Enu, LocalReference, WGS84};
-use monitor_tool::{palette, rgba, vertex, Encoder};
+use monitor_tool::{palette, rgba, vertex, Encoder, Shape, Vertex};
 use rtk_qxwz::{
     AuthFile, Gpgga, GpggaParseError::*, GpggaSender, GpggaStatus::*, QXWZService, RTCMReceiver,
     RTKBoard,
